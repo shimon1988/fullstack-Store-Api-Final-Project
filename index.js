@@ -9,6 +9,7 @@ app.use(express.json());
 
 const filePath = path.join(__dirname, 'tasks.json');
 const deleteFilePath = path.join(__dirname, 'deletedTasks.json');
+const logFilePath = path.join(__dirname, 'operations.log');
 
 // Load tasks from tasks.json
 function loadTasks() {
@@ -38,6 +39,13 @@ function saveDeletedTasks(deletedTasks) {
     fs.writeFileSync(deleteFilePath, JSON.stringify(deletedTasks, null, 2), 'utf-8');
 }
 
+// Log operation details to operations.log
+function logOperation(operationType, taskId) {
+    const timestamp = new Date().toISOString();
+    const logEntry = `${timestamp} - Operation: ${operationType}, Task ID: ${taskId}\n`;
+    fs.appendFileSync(logFilePath, logEntry, 'utf-8');
+}
+
 let taskArray = loadTasks();
 
 app.post('/addTask', (req, res) => {
@@ -54,6 +62,7 @@ app.post('/addTask', (req, res) => {
 
     taskArray.push(newTask);
     saveTasks(taskArray); 
+    logOperation('CREATE', newTask.id); // Log the create operation
     res.status(201).json(newTask);
 });
 
@@ -63,6 +72,7 @@ app.get('/getTask/:id', (req, res) => {
     if (!task) {
         return res.status(404).json({ error: 'Task not found' });
     }
+    logOperation('READ', taskId); // Log the read operation
     res.json(task);
 });
 
@@ -79,7 +89,7 @@ app.put('/updateTask/:id', (req, res) => {
     taskArray[taskIndex] = { ...taskArray[taskIndex], ...updatedTaskData };
 
     saveTasks(taskArray);
-
+    logOperation('UPDATE', taskId); // Log the update operation
     res.status(200).json(taskArray[taskIndex]);
 });
 
@@ -107,6 +117,8 @@ app.delete('/deleteTask/:id', (req, res) => {
     const deletedTasks = loadDeletedTasks();
     deletedTasks.push(deletedTask);
     saveDeletedTasks(deletedTasks);
+    
+    logOperation('DELETE', taskId); // Log the delete operation
 
     res.status(200).json({ message: 'Task deleted successfully', deletedTask });
 });
